@@ -1,0 +1,70 @@
+#! /usr/local/bin/ruby
+require 'open-uri'
+require 'rubygems'
+require 'oauth'
+require 'twitter'
+require 'googl'
+
+load 'config.rb'
+
+data_dir = 'data'
+
+uri = URI.parse('http://www.disneystore.co.jp/tsum/')
+html = uri.read
+
+skus = []
+html.scan(/sku\=([0-9]+)/).each do |m|
+  skus.push(m[0])
+end
+
+FileUtils.mkdir_p(data_dir)
+
+skus.sort.uniq.each do |sku|
+  uri = URI.parse("http://www.disneystore.co.jp/shop/rss_i.aspx?sku=#{sku}")
+  xml = uri.read
+  name = xml.scan(/<title>(.+?)<\/title>/)[1].to_s
+  stock = xml.scan(/<dc:currentstock>(.+?)<\/dc:currentstock>/)[0].to_s
+
+  filename = File.join(data_dir, sku)
+
+  if File.exist?(filename)
+    last_stock = File.open(filename).read.chomp
+    if last_stock == '0' && stock != '0'
+      result = :new_stock
+    elsif last_stock != '0' && stock == '0'
+      result = :sold_out
+    else
+      result = :stay
+    end
+  else
+    result = :new_tsum
+  end
+  
+  state = {
+    :new_stock => '在庫あり',
+    :sold_out => '在庫なし',
+    :stay => '在庫そのまま',
+    :new_tsum => '新登場',
+  }[result]
+
+  link = $link.gsub(/\[\[SKU\]\]/, sku)
+  message = "#{state} #{name} #{link}"
+  puts message
+
+  if result != :stay 
+    puts "tweet!"
+    googl = Googl.shorten(link).short_url
+    Twitter.configure do |config|
+      config.consumer_key = $twitter[:consumer_key]
+      config.consumer_secret = $twitter[:consumer_secret]
+      config.oauth_token = $twitter[:access_token]
+      config.oauth_token_secret = $twitter[:access_token_secret]
+    end
+    client = Twitter::Client.new
+    client.update("#{state} #{name} #{googl}")
+  end
+
+  File.open(filename, 'w') {|f| f.puts stock }
+
+  sleep 1
+end
