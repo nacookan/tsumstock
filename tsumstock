@@ -47,6 +47,7 @@ skus.sort.uniq.each do |sku|
     :new_tsum => '新登場',
   }[result]
 
+  name = name.sub(/　TSUM TSUM　/, '')
   link = $link.gsub(/\[\[SKU\]\]/, sku)
   message = "#{state} #{name} #{link}"
   puts message
