@@ -3,7 +3,6 @@ require 'open-uri'
 require 'rubygems'
 require 'oauth'
 require 'twitter'
-require 'googl'
 
 load 'config.rb'
 
@@ -54,7 +53,6 @@ skus.sort.uniq.each do |sku|
 
   if result != :stay 
     puts "tweet!"
-    googl = Googl.shorten(link).short_url
     Twitter.configure do |config|
       config.consumer_key = $twitter[:consumer_key]
       config.consumer_secret = $twitter[:consumer_secret]
@@ -62,7 +60,7 @@ skus.sort.uniq.each do |sku|
       config.oauth_token_secret = $twitter[:access_token_secret]
     end
     client = Twitter::Client.new
-    client.update("#{state} #{name} #{googl}")
+    client.update("#{state} #{name} #{link}")
   end
 
   File.open(filename, 'w') {|f| f.puts stock }
